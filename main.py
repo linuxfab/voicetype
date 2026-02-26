@@ -3,9 +3,10 @@ VoiceType - 類 Typeless 語音輸入工具
 主程式：系統托盤常駐 + 快捷鍵監聽 + 語音處理管線
 
 使用方式：
-  1. 設定 config/config.json 中的 API Key
-  2. python main.py
+  1. 設定 config/config.json 或 .env 中的 API Key
+  2. uv run main.py
   3. 按住 Right Alt 說話，放開即輸出
+  4. 按下 Esc 可取消本次錄音
 """
 
 import ctypes
@@ -52,8 +53,10 @@ class VoiceType:
         self.llm = LLMProcessor(self.settings)
         self.injector = TextInjector(self.settings)
         self.hotkey = HotkeyManager(self.settings)
+        
         self.is_recording = False
         self.processing = False
+        self.cancelled = False
         self.tray_icon = None
         self._target_hwnd = None
 
@@ -66,6 +69,7 @@ class VoiceType:
         # 記住目前的前景視窗（使用者正在操作的視窗）
         self._target_hwnd = ctypes.windll.user32.GetForegroundWindow()
         self.is_recording = True
+        self.cancelled = False
         play_start()
         self.recorder.start()
         logger.info("Recording started...")
@@ -77,13 +81,31 @@ class VoiceType:
             return
         self.is_recording = False
         self.processing = True
-        play_stop()
+        
         audio_data = self.recorder.stop()
+        
+        # 如果使用者透過 Esc 取消了錄音，就不做後續處理
+        if self.cancelled:
+            logger.info("Recording cancelled by user.")
+            self._reset_status()
+            return
+            
+        play_stop()
         logger.info("Recording stopped (%.1f sec), processing...", len(audio_data) / 16000)
         self._update_tray("處理中...", "processing")
 
         # 背景執行緒處理，避免阻塞快捷鍵
         threading.Thread(target=self._process_audio, args=(audio_data,), daemon=True).start()
+
+    def on_hotkey_cancel(self):
+        """Esc 鍵按下：取消當前錄音"""
+        if self.is_recording:
+            self.cancelled = True
+            self.is_recording = False
+            self.recorder.stop()
+            # 可以考慮新增一個"取消"的音效，目前直接回歸靜音狀態
+            logger.info("Recording cancelled (Esc pressed).")
+            self._reset_status()
 
     # ── 語音處理管線 ─────────────────────────────────────────────────────────
 
@@ -97,6 +119,10 @@ class VoiceType:
             if duration < MIN_RECORDING_SECONDS:
                 logger.warning("Recording too short (%.1fs), skipped", duration)
                 self._reset_status()
+                return
+
+            # 如果中途被取消
+            if self.cancelled:
                 return
 
             # 步驟 1：語音轉文字
@@ -135,6 +161,7 @@ class VoiceType:
             self.hotkey.register(
                 on_press=self.on_hotkey_press,
                 on_release=self.on_hotkey_release,
+                on_cancel=self.on_hotkey_cancel,
             )
 
             total = time.time() - t0
@@ -161,6 +188,7 @@ class VoiceType:
 
     def _reset_status(self):
         self.processing = False
+        self.cancelled = False
         self._update_tray("就緒", "idle")
 
     def _create_tray_icon(self):
@@ -213,6 +241,7 @@ class VoiceType:
         self.hotkey.register(
             on_press=self.on_hotkey_press,
             on_release=self.on_hotkey_release,
+            on_cancel=self.on_hotkey_cancel,
         )
         logger.info("Settings reloaded")
 
@@ -231,18 +260,19 @@ class VoiceType:
 
         logger.info("=" * 55)
         logger.info("  VoiceType v0.1.0")
-        logger.info("  Hotkey: %s (hold to speak)", hotkey)
+        logger.info("  Hotkey: %s (hold to speak, Esc to cancel)", hotkey)
         logger.info("  STT:    %s / %s", cfg.get("sttProvider"), cfg.get("sttModel"))
         logger.info("  LLM:    %s / %s", cfg.get("llmProvider"), cfg.get("llmModel"))
         logger.info("=" * 55)
 
-        # 檢查 API Key
+        # 檢查 API Key (若從 .env 吃則 config 可能為空，需從 getter 確認)
         self._check_api_keys(cfg)
 
         # 註冊快捷鍵
         self.hotkey.register(
             on_press=self.on_hotkey_press,
             on_release=self.on_hotkey_release,
+            on_cancel=self.on_hotkey_cancel,
         )
         logger.info("Hotkey registered: %s", hotkey)
 
@@ -252,7 +282,7 @@ class VoiceType:
             tray_thread = threading.Thread(target=tray.run, daemon=True)
             tray_thread.start()
 
-        logger.info("VoiceType started! Hold %s to speak", hotkey)
+        logger.info("VoiceType started! Hold %s to speak, Esc to cancel", hotkey)
         try:
             while True:
                 time.sleep(1)
@@ -261,19 +291,18 @@ class VoiceType:
 
     def _check_api_keys(self, cfg):
         """啟動時檢查必要的 API Key，如為空則自動開啟設定頁面"""
-        keys = cfg.get("apiKeys", {})
         stt_provider = cfg.get("sttProvider", "groq")
         llm_provider = cfg.get("llmProvider", "openai")
 
         missing = []
-        if stt_provider in ("groq", "openai") and not keys.get(stt_provider):
+        if stt_provider in ("groq", "openai") and not self.settings.get_api_key(stt_provider):
             missing.append(f"STT ({stt_provider})")
-        if llm_provider in ("openai", "anthropic", "groq") and not keys.get(llm_provider):
+        if llm_provider in ("openai", "anthropic", "groq") and not self.settings.get_api_key(llm_provider):
             missing.append(f"LLM ({llm_provider})")
 
         if missing:
             for m in missing:
-                logger.warning("%s API Key 尚未設定", m)
+                logger.warning("%s API Key 尚未設定 (可通過 config.json 或 .env 提供)", m)
             logger.info("首次啟動偵測：自動開啟設定頁面...")
             self._open_settings()
 

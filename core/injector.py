@@ -23,15 +23,24 @@ class TextInjector:
         self.settings = settings
 
     def inject(self, text: str):
-        """將文字注入到當前游標位置（剪貼簿 + Ctrl+V）"""
+        """將文字注入到當前游標位置（保護原有剪貼簿內容）"""
         if not text:
             return
 
         try:
+            # 1. 備份原有剪貼簿內容
+            original_clipboard = pyperclip.paste()
+            
+            # 2. 寫入新文字並貼上
             pyperclip.copy(text)
             time.sleep(CLIPBOARD_SETTLE_SECONDS)
             pyautogui.hotkey("ctrl", "v")
-            logger.info("Injected %d characters via clipboard", len(text))
+            time.sleep(CLIPBOARD_SETTLE_SECONDS)
+            
+            # 3. 還原剪貼簿內容
+            pyperclip.copy(original_clipboard)
+            
+            logger.info("Injected %d characters via clipboard (and restored original content)", len(text))
         except Exception as e:
             logger.error("Text injection failed: %s", e)
             raise

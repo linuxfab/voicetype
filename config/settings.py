@@ -8,6 +8,13 @@ import logging
 import os
 from pathlib import Path
 
+try:
+    from dotenv import load_dotenv
+    # 嘗試載入專案根目錄或當前目錄的 .env 檔案
+    load_dotenv()
+except ImportError:
+    pass
+
 logger = logging.getLogger("VoiceType.Settings")
 
 # 有效值定義
@@ -124,12 +131,26 @@ class Settings:
         self.save()
 
     def get_api_key(self, provider: str) -> str:
-        """取得指定引擎的 API Key"""
+        """取得指定引擎的 API Key (優先讀取 .env 或環境變數)"""
+        env_keys = {
+            "openai": "OPENAI_API_KEY",
+            "groq": "GROQ_API_KEY",
+            "anthropic": "ANTHROPIC_API_KEY",
+            "ollama": "OLLAMA_API_BASE"
+        }
+        
+        env_var_name = env_keys.get(provider)
+        if env_var_name:
+            env_val = os.environ.get(env_var_name)
+            if env_val:
+                return env_val
+
+        # 若 .env 或環境變數中沒有，則讀取 config.json 中的設定
         cfg = self.get_config()
         return cfg.get("apiKeys", {}).get(provider, "")
 
     def set_api_key(self, provider: str, key: str):
-        """設定 API Key"""
+        """設定 API Key (僅寫入 config.json)"""
         cfg = self.get_config()
         if "apiKeys" not in cfg:
             cfg["apiKeys"] = {}
