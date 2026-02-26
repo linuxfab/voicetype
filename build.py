@@ -3,13 +3,13 @@ VoiceType 打包腳本
 將整個專案打包成單一 .exe 檔案，雙擊即可執行
 
 用法：
-  python build.py
+  uv run build.py
 
 產出：
   dist/VoiceType.exe  (單一可執行檔)
 
 需求：
-  pip install pyinstaller
+  uv pip install pyinstaller
 """
 
 import os
@@ -28,15 +28,22 @@ def check_pyinstaller():
         import PyInstaller
         print(f"[OK] PyInstaller {PyInstaller.__version__}")
     except ImportError:
-        print("[INFO] PyInstaller not found, installing...")
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "pyinstaller"])
+        print("[INFO] PyInstaller not found, installing via uv...")
+        subprocess.check_call(["uv", "pip", "install", "pyinstaller"])
         print("[OK] PyInstaller installed")
 
 
 def build():
     print("=" * 50)
-    print("  VoiceType Build Tool")
+    print("  VoiceType Build Tool (uv env)")
     print("=" * 50)
+    
+    # 確保虛擬環境存在並安裝相依套件
+    if not (ROOT / ".venv").exists():
+        print("[INFO] Creating uv virtual environment...")
+        subprocess.check_call(["uv", "venv"])
+        print("[INFO] Installing requirements with uv...")
+        subprocess.check_call(["uv", "pip", "install", "-r", "requirements.txt"])
 
     check_pyinstaller()
 
@@ -53,7 +60,7 @@ def build():
 
     # PyInstaller 指令
     cmd = [
-        sys.executable, "-m", "PyInstaller",
+        "uv", "run", "pyinstaller",
         "--onefile",                        # 單一 exe
         "--windowed",                       # 不顯示 console（系統托盤模式）
         "--name=VoiceType",                 # exe 名稱

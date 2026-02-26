@@ -23,11 +23,14 @@ VoiceType 是一個系統級的語音輸入工具。按住快捷鍵說話，放�
 2. 雙擊執行
 3. 首次啟動會自動開啟設定頁面 → 填入 API Key → 完成
 
-### 從原始碼執行
+### 從原始碼執行 (使用 uv)
+
+請先安裝 [uv](https://docs.astral.sh/uv/getting-started/installation/)
 
 ```bash
-pip install -r requirements.txt
-python main.py
+uv venv
+uv pip install -r requirements.txt
+uv run main.py
 ```
 
 ### 取得 API Key
@@ -114,9 +117,15 @@ voicetype/
 
 ## 自行打包
 
+需確定已在 `uv` 環境內。
+
 ```bash
-pip install pyinstaller
-python build.py
+uv pip install pyinstaller
+uv run build.py
+```
+或直接執行：
+```bash
+build.bat
 ```
 
 產出 `dist/VoiceType.exe`。

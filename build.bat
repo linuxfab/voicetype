@@ -6,11 +6,13 @@ echo.
 echo  📦 正在打包 VoiceType 為獨立 EXE...
 echo.
 
-:: 安裝 pyinstaller
-pip install pyinstaller -q
+:: 建立環境與安裝 pyinstaller 及相依套件
+uv venv -q
+uv pip install pyinstaller -q
+uv pip install -r requirements.txt -q
 
 :: 打包
-pyinstaller ^
+uv run pyinstaller ^
     --name VoiceType ^
     --onefile ^
     --windowed ^
