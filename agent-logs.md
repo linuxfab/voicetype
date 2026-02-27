@@ -1,3 +1,12 @@
+* 2026-02-27 09:03
+* 重點: 更新 README.md 文件與文件規則
+* 影響: 
+  1. 將 `config.json` 的儲存路徑與設定方式補入 `README.md`。
+  2. 在 `README.md` 開頭補上 GitHub 專案網址 (https://github.com/linuxfab/voicetype) 與最後更新時間。
+  3. 在 LLM 引擎列表中新增 `Gemini 2.5 Flash Lite`，並標示為預設推薦選項。
+* 結果: 文件更加完整，符合使用者閱讀習慣與專案規範。
+* 更新者: antigravity agent
+
 * 2026-02-27 08:35
 * 重點: 新增 LLM 串流輸出 (Streaming) 支援功能
 * 影響: 

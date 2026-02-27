@@ -2,6 +2,9 @@
 
 > 按住說話，放開即輸出 — Windows 語音輸入工具
 
+**GitHub 專案網址**: [https://github.com/linuxfab/voicetype](https://github.com/linuxfab/voicetype)  
+**最後更新時間**: 2026-02-27
+
 VoiceType 是一個系統級的語音輸入工具。按住快捷鍵說話，放開後自動透過 AI 去除贅字、修正語句、加入標點，然後將文字注入到任何應用程式的游標位置。
 
 ## 功能
