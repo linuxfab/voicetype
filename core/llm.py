@@ -37,8 +37,9 @@ class LLMProcessor:
         # 如果文字很短且乾淨，可以跳過 LLM
         if len(raw_text.strip()) < 3:
             if stream:
-                yield raw_text.strip()
-                return
+                def _short_gen():
+                    yield raw_text.strip()
+                return _short_gen()
             else:
                 return raw_text.strip()
 
