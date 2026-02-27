@@ -5,10 +5,20 @@ LLM 智能修飾模組
 """
 
 import logging
+import re
 
 from config.settings import DEFAULT_SYSTEM_PROMPT
 
 logger = logging.getLogger("VoiceType.LLM")
+
+
+def _format_mixed_text(text: str) -> str:
+    """中英夾雜自動加空格 Regex 後處理"""
+    # 英文/數字後面接著中文字
+    text = re.sub(r'([a-zA-Z0-9])([\u4e00-\u9fa5])', r'\1 \2', text)
+    # 中文字後面接著英文/數字
+    text = re.sub(r'([\u4e00-\u9fa5])([a-zA-Z0-9])', r'\1 \2', text)
+    return text
 
 
 class LLMProcessor:
@@ -28,16 +38,23 @@ class LLMProcessor:
 
         try:
             if provider == "openai":
-                return self._polish_openai(raw_text, cfg)
+                polished = self._polish_openai(raw_text, cfg)
             elif provider == "anthropic":
-                return self._polish_anthropic(raw_text, cfg)
+                polished = self._polish_anthropic(raw_text, cfg)
             elif provider == "groq":
-                return self._polish_groq(raw_text, cfg)
+                polished = self._polish_groq(raw_text, cfg)
             elif provider == "ollama":
-                return self._polish_ollama(raw_text, cfg)
+                polished = self._polish_ollama(raw_text, cfg)
             else:
                 logger.warning("未知 LLM 引擎 %s，直接輸出原文", provider)
-                return raw_text.strip()
+                polished = raw_text.strip()
+
+            # Regex 後處理確保中英夾雜排版一致
+            if cfg.get("autoFormat", True):
+                polished = _format_mixed_text(polished)
+                
+            return polished
+
         except Exception as e:
             logger.error("LLM 修飾失敗: %s，回退為原文", e)
             return raw_text.strip()
@@ -58,21 +75,50 @@ class LLMProcessor:
         """偵測當前使用的 App 來調整語氣"""
         try:
             import win32gui
+            import win32process
+            import psutil
+            
             hwnd = win32gui.GetForegroundWindow()
             title = win32gui.GetWindowText(hwnd).lower()
+            
+            _, pid = win32process.GetWindowThreadProcessId(hwnd)
+            try:
+                process = psutil.Process(pid)
+                exe_name = process.name().lower()
+            except Exception:
+                exe_name = ""
 
+            # 根據執行檔名稱判斷
+            if exe_name in ["chrome.exe", "msedge.exe", "firefox.exe", "brave.exe", "arc.exe"]:
+                if any(k in title for k in ["gmail", "outlook", "mail"]):
+                    return "用戶正在瀏覽器中撰寫郵件，語氣應正式專業"
+                elif any(k in title for k in ["chat", "messenger", "line", "discord"]):
+                    return "用戶正在網頁版通訊軟體聊天，語氣可以輕鬆口語"
+                else:
+                    return "用戶在瀏覽網頁，可能在填寫表單或撰筆記，語氣應清晰有理"
+
+            elif exe_name in ["code.exe", "pycharm.exe", "idea.exe", "devenv.exe", "cursor.exe", "windows terminal.exe", "powershell.exe", "cmd.exe"]:
+                return "用戶在寫程式，可能是在寫註解、撰寫技術文件或 Commit Message，語氣應技術性且簡潔"
+
+            elif exe_name in ["winword.exe", "excel.exe", "powerpnt.exe", "obsidian.exe", "notion.exe", "evernote.exe"]:
+                return "用戶在撰寫文件或筆記，語氣應清晰有條理"
+
+            elif exe_name in ["discord.exe", "line.exe", "slack.exe", "teams.exe", "telegram.exe", "whatsapp.exe"]:
+                if exe_name in ["slack.exe", "teams.exe"]:
+                    return "用戶在工作通訊軟體，語氣應簡潔專業"
+                return "用戶正在通訊軟體聊天，語氣可以輕鬆口語"
+                
+            # 退回：根據視窗標題判斷
             if any(k in title for k in ["outlook", "gmail", "mail", "thunderbird"]):
                 return "用戶正在撰寫郵件，語氣應正式專業"
-            elif any(k in title for k in ["discord", "line", "messenger", "telegram", "whatsapp"]):
-                return "用戶正在聊天，語氣可以輕鬆口語"
-            elif any(k in title for k in ["slack", "teams"]):
-                return "用戶在工作通訊軟體，語氣應簡潔專業"
             elif any(k in title for k in ["word", "docs", "notion", "obsidian"]):
                 return "用戶在撰寫文件，語氣應清晰有條理"
-            elif any(k in title for k in ["code", "vscode", "visual studio", "pycharm"]):
-                return "用戶在寫程式，可能是在寫註解或文件，語氣應技術性簡潔"
-        except Exception:
-            pass
+
+        except ImportError:
+            logger.debug("win32gui / psutil not installed, context detection disabled.")
+        except Exception as e:
+            logger.debug("Context detection failed: %s", e)
+            
         return ""
 
     # ── OpenAI ChatGPT ───────────────────────────────────────────────────────

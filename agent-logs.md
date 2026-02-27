@@ -1,3 +1,12 @@
+* 2026-02-27 07:54
+* 重點: 新增更精準的語境偵測與中英夾雜 Regex 後處理
+* 影響: 
+  1. 修改 `requirements.txt` 以新增 `psutil` 與 `pywin32`。
+  2. 修改 `core/llm.py`，使用 `win32gui` 和 `psutil` 取得執行檔名稱，更精確地給予 LLM 對應的 System Prompt 語氣。
+  3. 修改 `core/llm.py`，增加 `re` 正則表達式，在 LLM 處理完後自動補上英文字母、數字與中文字元之間的半形空白，確保格式完全統一。
+* 結果: 提昇 AI 語氣的準確度，並保證長效穩定的中英排版格式。
+* 更新者: antigravity agent
+
 * 2026-02-27 07:42
 * 重點: 建立 `.env.example`
 * 影響: 建立範例環境變數設定檔 `.env.example` 以供使用者參考
