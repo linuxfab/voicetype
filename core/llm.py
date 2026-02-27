@@ -164,12 +164,12 @@ class LLMProcessor:
         )
 
         if stream:
-            def _gen():
-                for chunk in response:
+            def _gen(keepalive_client, resp):
+                for chunk in resp:
                     content = chunk.choices[0].delta.content
                     if content:
                         yield content
-            return _gen()
+            return _gen(client, response)
         else:
             return response.choices[0].message.content.strip()
 
@@ -195,11 +195,11 @@ class LLMProcessor:
                     {"role": "user", "content": raw_text},
                 ],
             )
-            def _gen():
-                with response as stream_manager:
+            def _gen(keepalive_client, stream_resp):
+                with stream_resp as stream_manager:
                     for text_event in stream_manager.text_stream:
                         yield text_event
-            return _gen()
+            return _gen(client, response)
         else:
             response = client.messages.create(
                 model=model,
@@ -239,12 +239,12 @@ class LLMProcessor:
         )
 
         if stream:
-            def _gen():
-                for chunk in response:
+            def _gen(keepalive_client, resp):
+                for chunk in resp:
                     content = chunk.choices[0].delta.content
                     if content:
                         yield content
-            return _gen()
+            return _gen(client, response)
         else:
             return response.choices[0].message.content.strip()
 
@@ -311,11 +311,11 @@ class LLMProcessor:
                 contents=raw_text,
                 config=config,
             )
-            def _gen():
-                for chunk in response_stream:
+            def _gen(keepalive_client, resp):
+                for chunk in resp:
                     if chunk.text:
                         yield chunk.text
-            return _gen()
+            return _gen(client, response_stream)
         else:
             response = client.models.generate_content(
                 model=model,
