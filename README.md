@@ -65,9 +65,13 @@ uv run main.py
 
 ## 設定
 
+預設的 `config.json` 檔案存放在你電腦的 AppDataRoaming 資料夾中，這個跨平台的標準作法可以避免設定檔因為程式更新或專案移動而遺失。
+完整路徑：`C:\Users\PC-4650G\AppData\Roaming\voicetype\config.json` 
+(可直接將路徑貼上檔案總管的網址列前往)
+
 設定方式（擇一）：
-- 系統托盤右鍵 →「開啟設定」（Web 介面）
-- 手動編輯 `%APPDATA%\voicetype\config.json`
+- **系統托盤右鍵** →「開啟設定」（Web 介面）：啟動後對著右下角系統列的麥克風圖示點右鍵。在網頁上修改後系統會自動幫你寫入設定檔。
+- **手動編輯** `%APPDATA%\voicetype\config.json`
 
 ### STT 引擎
 
