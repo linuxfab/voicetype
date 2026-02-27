@@ -27,8 +27,10 @@ class LLMProcessor:
 
     def __init__(self, settings):
         self.settings = settings
+        self._clients = {}
+        self._session = None
 
-    def polish(self, raw_text: str) -> Union[str, Generator[str, None, None]]:
+    def polish(self, raw_text: str, process_hwnd=None) -> Union[str, Generator[str, None, None]]:
         """將 STT 原始文字修飾為乾淨的輸出 (可能是字串，或字串生成器)"""
         cfg = self.settings.get_config()
         provider = cfg.get("llmProvider", "openai")
@@ -45,15 +47,15 @@ class LLMProcessor:
 
         try:
             if provider == "openai":
-                result = self._polish_openai(raw_text, cfg, stream)
+                result = self._polish_openai(raw_text, cfg, stream, process_hwnd)
             elif provider == "anthropic":
-                result = self._polish_anthropic(raw_text, cfg, stream)
+                result = self._polish_anthropic(raw_text, cfg, stream, process_hwnd)
             elif provider == "groq":
-                result = self._polish_groq(raw_text, cfg, stream)
+                result = self._polish_groq(raw_text, cfg, stream, process_hwnd)
             elif provider == "ollama":
-                result = self._polish_ollama(raw_text, cfg, stream)
+                result = self._polish_ollama(raw_text, cfg, stream, process_hwnd)
             elif provider == "gemini":
-                result = self._polish_gemini(raw_text, cfg, stream)
+                result = self._polish_gemini(raw_text, cfg, stream, process_hwnd)
             else:
                 logger.warning("未知 LLM 引擎 %s，直接輸出原文", provider)
                 result = [raw_text.strip()] if stream else raw_text.strip()
@@ -80,25 +82,26 @@ class LLMProcessor:
             if chunk:
                 yield chunk
 
-    def _get_system_prompt(self, cfg: dict) -> str:
+    def _get_system_prompt(self, cfg: dict, process_hwnd=None) -> str:
         """取得系統提示詞（含語境資訊）"""
         base_prompt = cfg.get("systemPrompt", DEFAULT_SYSTEM_PROMPT)
 
         if cfg.get("contextAware", True):
-            context = self._detect_context()
+            context = self._detect_context(process_hwnd)
             if context:
                 base_prompt += f"\n\n當前語境：{context}"
 
+        base_prompt += "\n\n重要規則：請一律使用繁體中文 (Traditional Chinese, zh-TW) 輸出，絕對不要輸出簡體字。"
         return base_prompt
 
-    def _detect_context(self) -> str:
+    def _detect_context(self, process_hwnd=None) -> str:
         """偵測當前使用的 App 來調整語氣"""
         try:
             import win32gui
             import win32process
             import psutil
             
-            hwnd = win32gui.GetForegroundWindow()
+            hwnd = process_hwnd if process_hwnd else win32gui.GetForegroundWindow()
             title = win32gui.GetWindowText(hwnd).lower()
             
             _, pid = win32process.GetWindowThreadProcessId(hwnd)
@@ -141,16 +144,19 @@ class LLMProcessor:
 
     # ── OpenAI ChatGPT ───────────────────────────────────────────────────────
 
-    def _polish_openai(self, raw_text: str, cfg: dict, stream: bool):
+    def _polish_openai(self, raw_text: str, cfg: dict, stream: bool, process_hwnd=None):
         from openai import OpenAI
 
         api_key = self.settings.get_api_key("openai")
         if not api_key:
             raise ValueError("OpenAI API Key 未設定")
 
-        client = OpenAI(api_key=api_key)
+        if "openai" not in self._clients:
+            self._clients["openai"] = OpenAI(api_key=api_key)
+        client = self._clients["openai"]
+        
         model = cfg.get("llmModel", "gpt-4o-mini")
-        system_prompt = self._get_system_prompt(cfg)
+        system_prompt = self._get_system_prompt(cfg, process_hwnd)
 
         response = client.chat.completions.create(
             model=model,
@@ -175,16 +181,19 @@ class LLMProcessor:
 
     # ── Anthropic Claude ─────────────────────────────────────────────────────
 
-    def _polish_anthropic(self, raw_text: str, cfg: dict, stream: bool):
+    def _polish_anthropic(self, raw_text: str, cfg: dict, stream: bool, process_hwnd=None):
         import anthropic
 
         api_key = self.settings.get_api_key("anthropic")
         if not api_key:
             raise ValueError("Anthropic API Key 未設定")
 
-        client = anthropic.Anthropic(api_key=api_key)
+        if "anthropic" not in self._clients:
+            self._clients["anthropic"] = anthropic.Anthropic(api_key=api_key)
+        client = self._clients["anthropic"]
+        
         model = cfg.get("llmModel", "claude-haiku-4-5-20251001")
-        system_prompt = self._get_system_prompt(cfg)
+        system_prompt = self._get_system_prompt(cfg, process_hwnd)
 
         if stream:
             response = client.messages.stream(
@@ -213,19 +222,22 @@ class LLMProcessor:
 
     # ── Groq（OpenAI 相容）───────────────────────────────────────────────────
 
-    def _polish_groq(self, raw_text: str, cfg: dict, stream: bool):
+    def _polish_groq(self, raw_text: str, cfg: dict, stream: bool, process_hwnd=None):
         from openai import OpenAI
 
         api_key = self.settings.get_api_key("groq")
         if not api_key:
             raise ValueError("Groq API Key 未設定")
 
-        client = OpenAI(
-            api_key=api_key,
-            base_url="https://api.groq.com/openai/v1",
-        )
+        if "groq" not in self._clients:
+            self._clients["groq"] = OpenAI(
+                api_key=api_key,
+                base_url="https://api.groq.com/openai/v1",
+            )
+        client = self._clients["groq"]
+        
         model = cfg.get("llmModel", "llama-3.3-70b-versatile")
-        system_prompt = self._get_system_prompt(cfg)
+        system_prompt = self._get_system_prompt(cfg, process_hwnd)
 
         response = client.chat.completions.create(
             model=model,
@@ -250,15 +262,18 @@ class LLMProcessor:
 
     # ── Ollama 本地 ──────────────────────────────────────────────────────────
 
-    def _polish_ollama(self, raw_text: str, cfg: dict, stream: bool):
+    def _polish_ollama(self, raw_text: str, cfg: dict, stream: bool, process_hwnd=None):
         import requests
         import json
 
         endpoint = self.settings.get_api_key("ollama") or "http://localhost:11434"
         model = cfg.get("llmModel", "qwen3:8b")
-        system_prompt = self._get_system_prompt(cfg)
+        system_prompt = self._get_system_prompt(cfg, process_hwnd)
+        
+        if self._session is None:
+            self._session = requests.Session()
 
-        response = requests.post(
+        response = self._session.post(
             f"{endpoint}/api/chat",
             json={
                 "model": model,
@@ -287,7 +302,7 @@ class LLMProcessor:
 
     # ── Gemini (Google GenAI) ────────────────────────────────────────────────
 
-    def _polish_gemini(self, raw_text: str, cfg: dict, stream: bool):
+    def _polish_gemini(self, raw_text: str, cfg: dict, stream: bool, process_hwnd=None):
         from google import genai
         from google.genai import types
 
@@ -295,9 +310,12 @@ class LLMProcessor:
         if not api_key:
             raise ValueError("Gemini API Key 未設定")
 
-        client = genai.Client(api_key=api_key)
+        if "gemini" not in self._clients:
+            self._clients["gemini"] = genai.Client(api_key=api_key)
+        client = self._clients["gemini"]
+        
         model = cfg.get("llmModel", "gemini-2.5-flash-lite")
-        system_prompt = self._get_system_prompt(cfg)
+        system_prompt = self._get_system_prompt(cfg, process_hwnd)
 
         config = types.GenerateContentConfig(
             system_instruction=system_prompt,

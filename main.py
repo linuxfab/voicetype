@@ -31,7 +31,7 @@ from config.settings import Settings
 
 # ── 常數 ─────────────────────────────────────────────────────────────────────
 MIN_RECORDING_SECONDS = 0.3
-INJECT_DELAY_SECONDS = 0.3
+INJECT_DELAY_SECONDS = 0.1
 ERROR_DISPLAY_SECONDS = 3
 
 # ── Logging ───────────────────────────────────────────────────────────────────
@@ -139,17 +139,23 @@ class VoiceType:
 
             # 步驟 2：LLM 智能修飾
             t1 = time.time()
-            polished = self.llm.polish(raw_text)
+            polished = self.llm.polish(raw_text, process_hwnd=self._target_hwnd)
 
             # 步驟 3：暫停 keyboard hook → 恢復前景視窗 → 注入 → 重新註冊
             self.hotkey.unhook()
+            
+            # 短暫延遲讓系統釋放 key states
             time.sleep(INJECT_DELAY_SECONDS)
 
             # 恢復使用者原本操作的視窗到前景
             if self._target_hwnd:
                 try:
                     ctypes.windll.user32.SetForegroundWindow(self._target_hwnd)
-                    time.sleep(0.05)
+                    # 輪詢確認視窗是否已到前景，最多等 0.2 秒
+                    for _ in range(10):
+                        if ctypes.windll.user32.GetForegroundWindow() == self._target_hwnd:
+                            break
+                        time.sleep(0.02)
                 except Exception:
                     pass
 

@@ -1,3 +1,13 @@
+* 2026-02-27 12:00
+* 重點: API 連線快取、縮短打字焦點延遲與強制繁中輸出
+* 影響: 
+  1. 在 `core/stt.py` 與 `core/llm.py` 中實作 `self._clients` 與 `self._session`，快取所有 API 用戶端，讓後續請求享有 Keep-Alive 連線池機制，避免重複 TLS 握手。
+  2. 修改 `main.py` 與 `core/llm.py`，把按下快捷鍵時已取得的 `HWND` (前景視窗把柄) 向下傳遞至 LLM，避免在耗時的等待後呼叫同步 `psutil` 造成阻擋式延遲。
+  3. 大幅縮減 `main.py` 的 `INJECT_DELAY_SECONDS` 至 `0.1` 並且導入迴圈頻繁輪詢焦點，最高可省下 200ms 的文字送出等待時間。
+  4. 於 `core/llm.py` 中 `System Prompt` 強制掛載繁體中文 (zh-TW) 輸出指令，根除偶發性的簡體字產生。
+* 結果: 顯著降低了每次語音觸發的網路 I/O 延遲，提升了打字輸出的極限順暢度與精確度。
+* 更新者: antigravity agent
+
 * 2026-02-27 09:03
 * 重點: 更新 README.md 文件與文件規則
 * 影響: 

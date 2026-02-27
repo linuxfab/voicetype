@@ -19,6 +19,7 @@ class SpeechToText:
 
     def __init__(self, settings):
         self.settings = settings
+        self._clients = {}
 
     def transcribe(self, audio: np.ndarray) -> str:
         """將音訊轉為文字"""
@@ -50,10 +51,12 @@ class SpeechToText:
         if not api_key:
             raise ValueError("Groq API Key 未設定")
 
-        client = OpenAI(
-            api_key=api_key,
-            base_url="https://api.groq.com/openai/v1",
-        )
+        if "groq" not in self._clients:
+            self._clients["groq"] = OpenAI(
+                api_key=api_key,
+                base_url="https://api.groq.com/openai/v1",
+            )
+        client = self._clients["groq"]
 
         wav_bytes = audio_to_wav_bytes(audio)
         audio_file = io.BytesIO(wav_bytes)
@@ -83,7 +86,9 @@ class SpeechToText:
         if not api_key:
             raise ValueError("OpenAI API Key 未設定")
 
-        client = OpenAI(api_key=api_key)
+        if "openai" not in self._clients:
+            self._clients["openai"] = OpenAI(api_key=api_key)
+        client = self._clients["openai"]
 
         wav_bytes = audio_to_wav_bytes(audio)
         audio_file = io.BytesIO(wav_bytes)
