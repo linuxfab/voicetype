@@ -85,7 +85,8 @@ uv run main.py
 
 | 引擎 | 速度 | 費用 | 說明 |
 |------|------|------|------|
-| **OpenAI gpt-4o-mini** | 快 | 極低 | 推薦 |
+| **Gemini 2.5 Flash Lite** | 極快 | 極高免費額度 | 推薦，預設選項 |
+| OpenAI gpt-4o-mini | 快 | 極低 | 穩定且聰明 |
 | Anthropic Claude | 快 | 低 | 高品質文字處理 |
 | Groq | 極快 | 幾乎免費 | 開源模型 |
 | Ollama | 依硬體 | 免費 | 完全離線 |
