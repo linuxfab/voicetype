@@ -295,7 +295,7 @@ class LLMProcessor:
             raise ValueError("Gemini API Key 未設定")
 
         client = genai.Client(api_key=api_key)
-        model = cfg.get("llmModel", "gemini-2.5-flash")
+        model = cfg.get("llmModel", "gemini-2.5-flash-lite")
         system_prompt = self._get_system_prompt(cfg)
 
         config = types.GenerateContentConfig(
