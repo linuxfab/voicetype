@@ -1,3 +1,12 @@
+* 2026-02-27 12:03
+* 重點: 新增 Gemini API 設定介面支援及錄音音效提示開關
+* 影響: 
+  1. 在 `ui/settings.html` 補上缺失的 `Gemini API Key` 欄位與相關 JavaScript 綁定。
+  2. 修改 `config/settings.py`，新增 `playSounds` 選項，預設為 `True`。
+  3. 修改 `main.py` 與 `ui/settings.html`，使錄音時的提示音效受 `playSounds` 設定控制，並於設定頁面的「進階設定」區塊提供開關。
+* 結果: 使用者能在網頁設定中順利儲存 Gemini 金鑰作為本地或預設引擎使用；並且能自由決定是否開啟按下快捷鍵時的「嗶」聲回饋，提升客製化體驗。
+* 更新者: antigravity agent
+
 * 2026-02-27 12:00
 * 重點: API 連線快取、縮短打字焦點延遲與強制繁中輸出
 * 影響: 

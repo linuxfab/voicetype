@@ -70,7 +70,8 @@ class VoiceType:
         self._target_hwnd = ctypes.windll.user32.GetForegroundWindow()
         self.is_recording = True
         self.cancelled = False
-        play_start()
+        if self.settings.get_config().get("playSounds", True):
+            play_start()
         self.recorder.start()
         logger.info("Recording started...")
         self._update_tray("錄音中...", "recording")
@@ -89,8 +90,9 @@ class VoiceType:
             logger.info("Recording cancelled by user.")
             self._reset_status()
             return
-            
-        play_stop()
+
+        if self.settings.get_config().get("playSounds", True):
+            play_stop()
         logger.info("Recording stopped (%.1f sec), processing...", len(audio_data) / 16000)
         self._update_tray("處理中...", "processing")
 

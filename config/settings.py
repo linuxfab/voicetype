@@ -36,6 +36,7 @@ class VoiceTypeConfig(PydanticBaseSettings):
     language: Literal["auto", "zh-TW", "zh-CN", "en", "ja"] = "auto"
     outputMode: str = "clipboard"
     streamOutput: bool = False
+    playSounds: bool = True
     removeFiller: bool = True
     autoFormat: bool = True
     contextAware: bool = True
