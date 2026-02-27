@@ -1,3 +1,20 @@
+* 2026-02-27 08:35
+* 重點: 新增 LLM 串流輸出 (Streaming) 支援功能
+* 影響: 
+  1. 修改 `config/settings.py` 的 Pydantic 模型，新增 `streamOutput` 設定項。
+  2. 修改 `core/llm.py`，讓 OpenAI、Anthropic、Groq、Ollama 均能支援 Generator 串流模式返回文字。
+  3. 修改 `core/injector.py` 與 `main.py`，如果是串流模式則使用 `keyboard.write()` 即時打字輸出，否則依然採用原來的剪貼簿方式。
+* 結果: 在長段對話修飾時能感受到明顯的低延遲，並有著即時打字的視覺回饋，不需等待整個 LLM 處理結束。
+* 更新者: antigravity agent
+
+* 2026-02-27 08:25
+* 重點: 導入 Pydantic 管理設定檔，並將開發環境切換至 uv
+* 影響: 
+  1. 將 `config/settings.py` 從 Dict 升級為基於 `pydantic` 與 `pydantic-settings`，實現自動型別檢查與更安全的預設值管理。
+  2. 新增 `pydantic` 及 `pydantic-settings` 到 `requirements.txt` 中。
+* 結果: 大幅提升程式碼的健壯性與後續擴展彈性。
+* 更新者: antigravity agent
+
 * 2026-02-27 07:54
 * 重點: 新增更精準的語境偵測與中英夾雜 Regex 後處理
 * 影響: 

@@ -22,8 +22,11 @@ openai>=1.30.0          # OpenAI + Groq (相容介面)
 anthropic>=0.28.0       # Anthropic Claude
 requests>=2.31.0        # Ollama HTTP 呼叫
 
-# ── 環境變數 ──
+# ── 環境變數與設定 ──
 python-dotenv>=1.0.0
+pydantic>=2.4.0
+pydantic-settings>=2.0.0
+google-genai>=0.1.0
 
 # ── Windows 限定（偵測當前視窗與執行檔名稱）──
 pywin32>=306

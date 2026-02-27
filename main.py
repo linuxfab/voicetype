@@ -140,8 +140,6 @@ class VoiceType:
             # 步驟 2：LLM 智能修飾
             t1 = time.time()
             polished = self.llm.polish(raw_text)
-            llm_time = time.time() - t1
-            logger.info("Polished (%.1fs): %s", llm_time, polished)
 
             # 步驟 3：暫停 keyboard hook → 恢復前景視窗 → 注入 → 重新註冊
             self.hotkey.unhook()
@@ -155,7 +153,16 @@ class VoiceType:
                 except Exception:
                     pass
 
-            self.injector.inject(polished)
+            import types
+            if isinstance(polished, types.GeneratorType):
+                logger.info("開始串流輸出 LLM 結果...")
+                self.injector.inject(polished)
+                llm_time = time.time() - t1
+                logger.info("串流輸出完成 (%.1fs)", llm_time)
+            else:
+                llm_time = time.time() - t1
+                logger.info("Polished (%.1fs): %s", llm_time, polished)
+                self.injector.inject(polished)
 
             # 重新註冊快捷鍵
             self.hotkey.register(
