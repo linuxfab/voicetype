@@ -274,6 +274,17 @@ class VoiceType:
 
         # 檢查 API Key (若從 .env 吃則 config 可能為空，需從 getter 確認)
         self._check_api_keys(cfg)
+        
+        stt_provider = cfg.get("sttProvider")
+        str_key_stt, stt_src = self.settings.get_api_key_with_source(stt_provider)
+        logger.info("  [%s] API 金鑰來源: %s", stt_provider, stt_src)
+
+        llm_provider = cfg.get("llmProvider")
+        if llm_provider != stt_provider:
+            llm_key, llm_src = self.settings.get_api_key_with_source(llm_provider)
+            logger.info("  [%s] API 金鑰來源: %s", llm_provider, llm_src)
+
+        logger.info("=" * 55)
 
         # 註冊快捷鍵
         self.hotkey.register(

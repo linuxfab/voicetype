@@ -156,10 +156,8 @@ class Settings:
             logger.error("更新設定失敗: %s", e)
             raise ValueError(f"更新設定失敗: {e}")
 
-    def get_api_key(self, provider: str) -> str:
-        """取得指定引擎的 API Key (優先讀取 .env 或環境變數)"""
-        # Pydantic BaseSettings 不會自動幫深層 (Nested) model 取聯集環境變數
-        # 所以維持這裡手動讀 ENV 的邏輯，如果使用者有設 OPENAI_API_KEY，優先用。
+    def get_api_key_with_source(self, provider: str) -> tuple[str, str]:
+        """取得指定引擎的 API Key 以及來源 (.env/環境變數 或 config.json)"""
         env_keys = {
             "openai": "OPENAI_API_KEY",
             "groq": "GROQ_API_KEY",
@@ -172,13 +170,17 @@ class Settings:
         if env_var_name:
             env_val = os.environ.get(env_var_name)
             if env_val:
-                return env_val
+                return env_val, ".env / 環境變數"
 
-        # 若 .env 或環境變數中沒有，則讀取 model 中的設定
         if not self._config_model:
             self.load()
         keys_dict = self._config_model.apiKeys.model_dump()
-        return keys_dict.get(provider, "")
+        return keys_dict.get(provider, ""), "config.json"
+
+    def get_api_key(self, provider: str) -> str:
+        """取得指定引擎的 API Key (優先讀取 .env 或環境變數)"""
+        key, _ = self.get_api_key_with_source(provider)
+        return key
 
     def set_api_key(self, provider: str, key: str):
         """設定 API Key (僅寫入 config.json)"""
